@@ -1,0 +1,52 @@
+name: Compilar APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Descomprimir el proyecto
+        run: |
+          set -e
+          mkdir proyecto
+          for z in *.zip; do unzip -oq "$z" -d proyecto; done
+          G="$(find proyecto -name gradlew -type f | head -n 1)"
+          test -n "$G" || { echo "No encuentro el proyecto dentro del zip"; exit 1; }
+          echo "PROJECT_DIR=$(dirname "$G")" >> "$GITHUB_ENV"
+
+      - name: Compilar
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Copiar el APK
+        run: cp "$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk" AceLink.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AceLink-apk
+          path: AceLink.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: AceLink (última versión)
+          files: AceLink.apk
+          make_latest: true
