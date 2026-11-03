@@ -19,15 +19,19 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      - name: Aceptar licencias del SDK de Android
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SDKM" ]; then yes | "$SDKM" --licenses > /dev/null || true; else echo "sdkmanager no encontrado, se continua"; fi
 
       - name: Descomprimir el proyecto
         run: |
           set -e
+          ls *.zip > /dev/null 2>&1 || { echo "::error::No hay ningun .zip en la raiz del repositorio. Sube AceLinkTV.zip."; exit 1; }
           mkdir proyecto
           for z in *.zip; do unzip -oq "$z" -d proyecto; done
           G="$(find proyecto -name gradlew -type f | head -n 1)"
-          test -n "$G" || { echo "No encuentro el proyecto dentro del zip"; exit 1; }
+          test -n "$G" || { echo "::error::No encuentro el proyecto dentro del zip"; exit 1; }
           echo "PROJECT_DIR=$(dirname "$G")" >> "$GITHUB_ENV"
 
       - name: Compilar
@@ -47,6 +51,6 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: AceLink (última versión)
+          name: AceLink (ultima version)
           files: AceLink.apk
           make_latest: true
